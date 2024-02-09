@@ -9,6 +9,16 @@
 
 @end
 
+// Function to check if the input layout of the keyboard has switched
+NSString *inputLayoutSwitched(CGKeyCode keyCode, NSString *modifierString) {
+    // keyCode 179 is the key code for the "Fn" key and keyCode 49 is the key code for the "Space" key
+    if ((keyCode == 179) || (keyCode == 49 && [modifierString isEqualToString:@"<Control>"])) {
+        return @"Input layout has switched"; // Input layout has switched
+    } else {
+        return @""; // Input layout has not switched
+    }
+}
+
 // Function to convert key code to character
 NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
 
@@ -25,12 +35,12 @@ NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
         // Special Charaters:
         @27: @"-", @24: @"=", @33: @"[", @30: @"]", @42: @"\\",
         @43: @",", @41: @";", @47: @".", @44: @"/", @39: @"'",
-        @50: @"`",
+        @50: @"`", 
 
         // Function Keys:
         @122: @"<F1>", @120: @"<F2>", @99: @"<F3>", @118: @"<F4>", @96: @"<F5>",
         @97: @"<F6>", @98: @"<F7>", @100: @"<F8>", @101: @"<F9>", @109: @"<F10>",
-        @103: @"<F11>", @111: @"<F12>",
+        @103: @"<F11>", @111: @"<F12>", @179: @"<Fn>", 
 
         // Control characters / whitespace
         @49: @"<Space>", @48: @"<Tab>", @36: @"<Enter>", @51: @"<Backspace>", @53: @"<Escape>",
@@ -100,25 +110,30 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
         // The incoming keycode. CGKeyCode is just a typedef of uint16_t, so we treat it like an int
         CGKeyCode keycode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         // CGEventKeyboardGetUnicodeString
+
+        // We don't need action, but if you need it, you can use the following code
         // Keypress code goes here.
-        NSString *action;
-        if (type == kCGEventKeyDown)
-            action = @"down";
-        else if (type == kCGEventKeyUp)
-            action = @"up";
-        else
-            action = @"other";
+        // NSString *action;
+        // if (type == kCGEventKeyDown)
+        //     action = @"down";
+        // else if (type == kCGEventKeyUp)
+        //     action = @"up";
+        // else
+        //     action = @"other";
 
         NSTimeInterval offset = [[NSDate date] timeIntervalSince1970] - config.epoch;
 
         // Convert the keycode to a character
         NSString *character = keyCodeToCharacter(keycode, modifierString);
 
+        // Check if the input layout of the keyboard has switched
+        NSString *inputLayoutSwitchedString = inputLayoutSwitched(keycode, modifierString);
+
         // logLine format:
         // ticks since started <TAB> key code <TAB> action <TAB> modifiers
         // so it'll look something like "13073    45    up    shift+command"
         NSString *logLine = [NSString stringWithFormat:@"%d\t%d\t%@\t%@\t%@\n",
-            (int)offset, keycode, character, action, modifierString];
+            (int)offset, keycode, character, inputLayoutSwitchedString, modifierString];
         NSLog(@"> %@", logLine);
         [config.output writeData:[logLine dataUsingEncoding:NSUTF8StringEncoding]];
     }
