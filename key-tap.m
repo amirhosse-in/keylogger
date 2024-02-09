@@ -19,6 +19,14 @@ NSString *inputLayoutSwitched(CGKeyCode keyCode, NSString *modifierString) {
     }
 }
 
+// Function to create time stamp
+NSString *createTimeStamp(NSString *format) {
+    NSDate *date = [NSDate date];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:format];
+    return [dateFormatter stringFromDate:date];
+}
+
 // Function to convert key code to character
 NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
 
@@ -37,10 +45,11 @@ NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
         @43: @",", @41: @";", @47: @".", @44: @"/", @39: @"'",
         @50: @"`", 
 
-        // Function Keys:
+        // Function Keys: (Compatible with Macbook Air 2020)
         @122: @"<F1>", @120: @"<F2>", @99: @"<F3>", @118: @"<F4>", @96: @"<F5>",
         @97: @"<F6>", @98: @"<F7>", @100: @"<F8>", @101: @"<F9>", @109: @"<F10>",
-        @103: @"<F11>", @111: @"<F12>", @179: @"<Fn>", 
+        @103: @"<F11>", @111: @"<F12>", @179: @"<Fn>", @160: @"<Mission Control>", 
+        @177: @"<Spotlight>", @178: @"<DND>", @176: @"🎤", 
 
         // Control characters / whitespace
         @49: @"<Space>", @48: @"<Tab>", @36: @"<Enter>", @51: @"<Backspace>", @53: @"<Escape>",
@@ -63,7 +72,11 @@ NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
 
             // Numbers
             @18: @"!", @19: @"@", @20: @"#", @21: @"$", @23: @"%",
-            @22: @"^", @26: @"&", @28: @"*", @25: @"(", @29: @")"
+            @22: @"^", @26: @"&", @28: @"*", @25: @"(", @29: @")",
+
+            // Control characters / whitespace
+            @49: @"<Space>", @48: @"<Tab>", @36: @"<Enter>", @51: @"<Backspace>", @53: @"<Escape>",
+            @117: @"<Delete>", @123: @"<Left>", @124: @"<Right>", @125: @"<Down>", @126: @"<Up>"
         };
         NSString *shiftedCharacter = [shiftedKeyCodeMapping objectForKey:@(keyCode)];
         return shiftedCharacter ? shiftedCharacter : @"<?unknown?>";
@@ -93,7 +106,7 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
         if ((flags & kCGEventFlagMaskControl) == kCGEventFlagMaskControl)
             [modifiers addObject:@"<Control>"];
         if ((flags & kCGEventFlagMaskAlternate) == kCGEventFlagMaskAlternate)
-            [modifiers addObject:@"<Alt>"];
+            [modifiers addObject:@"<Option>"];
         if ((flags & kCGEventFlagMaskCommand) == kCGEventFlagMaskCommand)
             [modifiers addObject:@"<Command>"];
         if ((flags & kCGEventFlagMaskSecondaryFn) == kCGEventFlagMaskSecondaryFn)
@@ -129,11 +142,14 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
         // Check if the input layout of the keyboard has switched
         NSString *inputLayoutSwitchedString = inputLayoutSwitched(keycode, modifierString);
 
+        // Get time stamp
+        NSString *timeStamp = createTimeStamp(@"YYYY-MM-dd HH:mm:ss");
+
         // logLine format:
         // ticks since started <TAB> key code <TAB> action <TAB> modifiers
         // so it'll look something like "13073    45    up    shift+command"
-        NSString *logLine = [NSString stringWithFormat:@"%d\t%d\t%@\t%@\t%@\n",
-            (int)offset, keycode, character, inputLayoutSwitchedString, modifierString];
+        NSString *logLine = [NSString stringWithFormat:@"%d\t%@\t%d\t%@\t%@\t%@\n",
+            (int)offset, timeStamp, keycode, character, inputLayoutSwitchedString, modifierString];
         NSLog(@"> %@", logLine);
         [config.output writeData:[logLine dataUsingEncoding:NSUTF8StringEncoding]];
     }
