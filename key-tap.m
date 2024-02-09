@@ -10,7 +10,8 @@
 @end
 
 // Function to convert key code to character
-NSString *keyCodeToCharacter(CGKeyCode keyCode) {
+NSString *keyCodeToCharacter(CGKeyCode keyCode, NSString *modifierString) {
+
     NSDictionary *keyCodeMapping = @{
         @0: @"a",  @11: @"b", @8: @"c",  @2: @"d",  @14: @"e", @3: @"f",  @5: @"g",  @4: @"h",
         @34: @"i", @38: @"j", @40: @"k", @37: @"l", @46: @"m", @45: @"n", @31: @"o", @35: @"p",
@@ -21,6 +22,11 @@ NSString *keyCodeToCharacter(CGKeyCode keyCode) {
         @18: @"1", @19: @"2", @20: @"3", @21: @"4", @23: @"5",
         @22: @"6", @26: @"7", @28: @"8", @25: @"9", @29: @"0",
         
+        // Special Charaters:
+        @27: @"-", @24: @"=", @33: @"[", @30: @"]", @42: @"\\",
+        @43: @",", @41: @";", @47: @".", @44: @"/", @39: @"'",
+        @50: @"`",
+
         // Function Keys:
         @122: @"<F1>", @120: @"<F2>", @99: @"<F3>", @118: @"<F4>", @96: @"<F5>",
         @97: @"<F6>", @98: @"<F7>", @100: @"<F8>", @101: @"<F9>", @109: @"<F10>",
@@ -31,6 +37,27 @@ NSString *keyCodeToCharacter(CGKeyCode keyCode) {
         @117: @"<Delete>", @123: @"<Left>", @124: @"<Right>", @125: @"<Down>", @126: @"<Up>"
     };
 
+    // Check modifierString is equal with <Shift>
+    if ([modifierString isEqualToString:@"<Shift>"]) {
+        NSDictionary *shiftedKeyCodeMapping = @{
+            // Characters
+            @0: @"A",  @11: @"B", @8: @"C",  @2: @"D",  @14: @"E", @3: @"F",  @5: @"G",  @4: @"H",
+            @34: @"I", @38: @"J", @40: @"K", @37: @"L", @46: @"M", @45: @"N", @31: @"O", @35: @"P",
+            @12: @"Q", @15: @"R", @1: @"S",  @17: @"T", @32: @"U", @9: @"V",  @13: @"W", @7: @"X",
+            @16: @"Y", @6: @"Z",
+            
+            // Special Charaters:
+            @27: @"_", @24: @"+", @33: @"{", @30: @"}", @42: @"|",
+            @43: @"<", @41: @":", @47: @">", @44: @"?", @39: @"\"",
+            @50: @"~",
+
+            // Numbers
+            @18: @"!", @19: @"@", @20: @"#", @21: @"$", @23: @"%",
+            @22: @"^", @26: @"&", @28: @"*", @25: @"(", @29: @")"
+        };
+        NSString *shiftedCharacter = [shiftedKeyCodeMapping objectForKey:@(keyCode)];
+        return shiftedCharacter ? shiftedCharacter : @"<?unknown?>";
+    }
     
     NSString *character = [keyCodeMapping objectForKey:@(keyCode)];
     return character ? character : @"<?unknown?>";
@@ -85,7 +112,7 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
         NSTimeInterval offset = [[NSDate date] timeIntervalSince1970] - config.epoch;
 
         // Convert the keycode to a character
-        NSString *character = keyCodeToCharacter(keycode);
+        NSString *character = keyCodeToCharacter(keycode, modifierString);
 
         // logLine format:
         // ticks since started <TAB> key code <TAB> action <TAB> modifiers
